@@ -22,9 +22,24 @@ var storeMutex = &sync.Mutex{}
 func main() {
 	Echo := echo.New()
 
+	Echo.GET("/services", listServices)
 	Echo.POST("/services", addService)
 
 	Echo.Logger.Fatal(Echo.Start(":3000"))
+}
+
+func listServices(ctx echo.Context) error {
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+
+	var services []Service
+
+	for _, service := range serviceStore {
+
+		services = append(services, service)
+	}
+
+	return ctx.JSON(http.StatusOK, services)
 }
 
 func addService(ctx echo.Context) error {
