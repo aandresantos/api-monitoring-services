@@ -25,6 +25,10 @@ func main() {
 	Echo.GET("/services", listServices)
 	Echo.POST("/services", addService)
 
+	Echo.GET("/services/:id", getServiceByID)
+	Echo.PATCH("/services/:id", patchService)
+	Echo.DELETE("/services/:id", deleteService)
+
 	Echo.Logger.Fatal(Echo.Start(":3000"))
 }
 
@@ -57,4 +61,72 @@ func addService(ctx echo.Context) error {
 	storeMutex.Unlock()
 
 	return ctx.JSON(http.StatusCreated, serv)
+}
+
+func getServiceByID(ctx echo.Context) error {
+	id := ctx.Param("id")
+
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+
+	service, found := serviceStore[id]
+
+	if !found {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "Serviço não encontrado"})
+	}
+
+	return ctx.JSON(http.StatusOK, service)
+}
+
+func patchService(ctx echo.Context) error {
+	id := ctx.Param("id")
+
+	type PatchServiceRequest struct {
+		Name       *string `string:"name"`
+		URLAddress *string `json:"urlAddress"`
+	}
+
+	var requestData PatchServiceRequest
+
+	if err := ctx.Bind(&requestData); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Body inválido"})
+	}
+
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+
+	service, found := serviceStore[id]
+
+	if !found {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "Serviço não encontrado"})
+	}
+
+	if requestData.Name != nil {
+		service.Name = *requestData.Name
+	}
+
+	if requestData.URLAddress != nil {
+		service.URLAddress = *requestData.URLAddress
+	}
+
+	serviceStore[id] = service
+
+	return ctx.JSON(http.StatusOK, service)
+}
+
+func deleteService(ctx echo.Context) error {
+	id := ctx.Param("id")
+
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+
+	_, found := serviceStore[id]
+
+	if !found {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "Serviço não encontrado"})
+	}
+
+	delete(serviceStore, id)
+
+	return ctx.NoContent(http.StatusNoContent)
 }
