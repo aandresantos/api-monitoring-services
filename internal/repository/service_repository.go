@@ -24,7 +24,7 @@ func NewInMemoryServiceRepository() *InMemoryServiceRepository {
 
 func (r *InMemoryServiceRepository) GetAll() []domain.Service {
 	r.mutex.RLock()
-	defer r.mutex.Unlock()
+	defer r.mutex.RUnlock()
 
 	services := make([]domain.Service, 0, len(r.store))
 
