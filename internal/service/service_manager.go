@@ -4,6 +4,7 @@ import (
 	"api-monitoring-services/internal/domain"
 	"api-monitoring-services/internal/repository"
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -27,4 +28,25 @@ func NewServiceManager(repo repository.ServiceRepository, checkInterval time.Dur
 
 func (sm *ServiceManager) GetAllServices() []domain.Service {
 	return sm.repo.GetAll()
+}
+
+func (sm *ServiceManager) CreateService(name, urlAddress string) (*domain.Service, error) {
+	if name == "" {
+		return nil, fmt.Errorf("nome do Serviço é obrigatório")
+	}
+
+	if urlAddress == "" {
+		return nil, fmt.Errorf("endereço de URL é obrigatório para registrar o serviço")
+	}
+
+	service := domain.NewService(domain.NewServiceBody{
+		Name:       name,
+		URLAddress: urlAddress,
+	})
+
+	if err := sm.repo.Create(service); err != nil {
+		return nil, fmt.Errorf("erro ao criar o serviço %v", err)
+	}
+
+	return service, nil
 }

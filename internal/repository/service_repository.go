@@ -7,6 +7,7 @@ import (
 
 type ServiceRepository interface {
 	GetAll() []domain.Service
+	Create(svc *domain.Service) error
 }
 
 type InMemoryServiceRepository struct {
@@ -33,4 +34,13 @@ func (r *InMemoryServiceRepository) GetAll() []domain.Service {
 	}
 
 	return services
+}
+
+func (r *InMemoryServiceRepository) Create(svc *domain.Service) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.store[svc.ID] = svc
+
+	return nil
 }
