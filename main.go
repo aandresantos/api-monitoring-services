@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"net/http"
 
@@ -29,6 +31,8 @@ func main() {
 	Echo.PATCH("/services/:id", patchService)
 	Echo.DELETE("/services/:id", deleteService)
 
+	startHealthChecks()
+
 	Echo.Logger.Fatal(Echo.Start(":3000"))
 }
 
@@ -54,7 +58,7 @@ func addService(ctx echo.Context) error {
 	}
 
 	serv.ID = uuid.New().String()
-	serv.Status = "Pending"
+	serv.Status = "pending"
 
 	storeMutex.Lock()
 	serviceStore[serv.ID] = serv
@@ -129,4 +133,57 @@ func deleteService(ctx echo.Context) error {
 	delete(serviceStore, id)
 
 	return ctx.NoContent(http.StatusNoContent)
+}
+
+func checkService(svc Service) {
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(svc.URLAddress)
+
+	var newStatus string
+
+	if err != nil || resp.StatusCode >= 400 {
+		newStatus = "offline"
+	} else {
+		newStatus = "online"
+
+		defer resp.Body.Close()
+	}
+
+	storeMutex.Lock()
+	defer storeMutex.Unlock()
+
+	if service, found := serviceStore[svc.ID]; found {
+		service.Status = newStatus
+		serviceStore[svc.ID] = service
+	}
+}
+
+func startHealthChecks() {
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			<-ticker.C
+
+			fmt.Println("--- [Health Check] Executando ciclo de verificação ---")
+
+			storeMutex.Lock()
+
+			servicesToCheck := make([]Service, 0, len(serviceStore))
+
+			for _, service := range serviceStore {
+				servicesToCheck = append(servicesToCheck, service)
+			}
+
+			storeMutex.Unlock()
+
+			for _, service := range servicesToCheck {
+				go checkService(service)
+			}
+		}
+	}()
 }
