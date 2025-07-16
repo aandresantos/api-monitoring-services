@@ -2,6 +2,8 @@ package domain
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ServiceStatus string
@@ -19,4 +21,22 @@ type Service struct {
 	Status     ServiceStatus `json:"status"`
 	CreatedAt  time.Time     `json:"createdAt"`
 	UpdatedAt  time.Time     `json:"updatedAt"`
+}
+
+type NewServiceBody struct {
+	Name       string `json:"name"`
+	URLAddress string `json:"urlAddress"`
+}
+
+func NewService(body NewServiceBody) *Service {
+	dateNow := time.Now()
+
+	return &Service{
+		ID:         uuid.New().String(),
+		Name:       body.Name,
+		URLAddress: body.URLAddress,
+		Status:     StatusPeding,
+		CreatedAt:  dateNow,
+		UpdatedAt:  dateNow,
+	}
 }
