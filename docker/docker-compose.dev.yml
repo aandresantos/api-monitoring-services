@@ -1,6 +1,7 @@
 
 services:
-  monitoring_psql_db:
+  postgres:
+    container_name: monitoring_psql_db
     image: postgres:15
     env_file:
       - ../.env
