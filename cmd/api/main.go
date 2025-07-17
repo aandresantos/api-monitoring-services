@@ -9,6 +9,7 @@ import (
 
 	"api-monitoring-services/internal/database"
 	"api-monitoring-services/internal/handler"
+	"api-monitoring-services/internal/pkg/healthcheck"
 	"api-monitoring-services/internal/repository"
 	"api-monitoring-services/internal/service"
 
@@ -34,8 +35,10 @@ func main() {
 
 	checkInterval := 30 * time.Second
 
+	checker := healthcheck.NewHTTPHealthChecker(5 * time.Second)
+
 	repo := repository.NewServiceRepository(dbClient)
-	serviceManager := service.NewServiceManager(repo, checkInterval)
+	serviceManager := service.NewServiceManager(repo, checker, checkInterval)
 	serviceHandler := handler.NewServiceHandler(serviceManager)
 
 	e := echo.New()
@@ -43,6 +46,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	serviceHandler.RegisterRoutes(e)
+	serviceManager.StartHealthChecks()
 
 	go func() {
 		StartServer(":3000", e)

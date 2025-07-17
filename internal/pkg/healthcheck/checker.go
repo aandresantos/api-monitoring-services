@@ -8,8 +8,8 @@ import (
 )
 
 type HealthChecker interface {
-	Check(svc domain.Service) domain.ServiceStatus
-	CheckWithMetrics(svc *domain.Service) *CheckResult
+	Check(svc *domain.Service) domain.ServiceStatus
+	// CheckWithMetrics(svc *domain.Service) CheckResult
 }
 
 type HTTPHealthChecker struct {
@@ -33,7 +33,7 @@ func NewHTTPHealthChecker(timeout time.Duration) *HTTPHealthChecker {
 	}
 }
 
-func (h HTTPHealthChecker) Check(svc *domain.Service) domain.ServiceStatus {
+func (h *HTTPHealthChecker) Check(svc *domain.Service) domain.ServiceStatus {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
@@ -56,7 +56,7 @@ func (h HTTPHealthChecker) Check(svc *domain.Service) domain.ServiceStatus {
 		return domain.StatusOffline
 	}
 
-	return domain.StatusOffline
+	return domain.StatusOnline
 }
 
 func (h *HTTPHealthChecker) CheckWithMetrics(svc *domain.Service) *CheckResult {

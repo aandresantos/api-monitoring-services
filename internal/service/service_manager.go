@@ -2,9 +2,11 @@ package service
 
 import (
 	"api-monitoring-services/internal/domain"
+	"api-monitoring-services/internal/pkg/healthcheck"
 	"api-monitoring-services/internal/repository"
 	"context"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -13,9 +15,11 @@ type ServiceManager struct {
 	checkInterval time.Duration
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
+	healthChecker healthcheck.HealthChecker
+	wg            sync.WaitGroup
 }
 
-func NewServiceManager(repo repository.IServiceRepository, checkInterval time.Duration) *ServiceManager {
+func NewServiceManager(repo repository.IServiceRepository, checker healthcheck.HealthChecker, checkInterval time.Duration) *ServiceManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ServiceManager{
@@ -23,6 +27,7 @@ func NewServiceManager(repo repository.IServiceRepository, checkInterval time.Du
 		checkInterval: checkInterval,
 		ctx:           ctx,
 		cancelFunc:    cancel,
+		healthChecker: checker,
 	}
 }
 
@@ -96,4 +101,58 @@ func (sm *ServiceManager) DeleteService(id string) error {
 	}
 
 	return nil
+}
+
+func (sm *ServiceManager) StopHealthChecks() {
+	sm.cancelFunc()
+	sm.wg.Wait()
+}
+
+func (sm *ServiceManager) StartHealthChecks() {
+	sm.wg.Add(1)
+	go func() {
+		defer sm.wg.Done()
+
+		ticker := time.NewTicker(sm.checkInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-sm.ctx.Done():
+				return
+			case <-ticker.C:
+				sm.performHealthChecks()
+			}
+		}
+	}()
+}
+
+func (sm *ServiceManager) performHealthChecks() {
+	fmt.Println("[Health Check] -> Executando ciclo de verificação")
+
+	services := sm.repo.GetAll()
+
+	var wg sync.WaitGroup
+
+	for _, service := range services {
+		wg.Add(1)
+		go func(svc domain.Service) {
+			defer wg.Done()
+			sm.checkSingleService(&svc)
+		}(service)
+	}
+
+	wg.Wait()
+	fmt.Printf("[Health Check] -> Verificação concluída para %d serviços ---\n", len(services))
+}
+
+func (sm *ServiceManager) checkSingleService(service *domain.Service) {
+	newStatus := sm.healthChecker.Check(service)
+
+	if service.Status != newStatus {
+		service.UpdateStatus(newStatus)
+		sm.repo.Update(service)
+		fmt.Printf("[Health Check] -> Serviço %s (%s) mudou para %s\n",
+			service.Name, service.ID, newStatus)
+	}
 }
