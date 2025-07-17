@@ -10,7 +10,7 @@ import (
 )
 
 type DBClient struct {
-	Pool *pgxpool.Pool
+	Conn *pgxpool.Pool
 }
 
 var DB *pgxpool.Pool
@@ -44,7 +44,7 @@ func ConnectDB() (*DBClient, error) {
 	DB = pool
 	fmt.Println(("DB conectado"))
 
-	return &DBClient{Pool: DB}, nil
+	return &DBClient{Conn: DB}, nil
 }
 
 func CloseConnectionDB() {

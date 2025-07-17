@@ -9,13 +9,13 @@ import (
 )
 
 type ServiceManager struct {
-	repo          repository.ServiceRepository
+	repo          repository.IServiceRepository
 	checkInterval time.Duration
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
 }
 
-func NewServiceManager(repo repository.ServiceRepository, checkInterval time.Duration) *ServiceManager {
+func NewServiceManager(repo repository.IServiceRepository, checkInterval time.Duration) *ServiceManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ServiceManager{
@@ -81,8 +81,14 @@ func (sm *ServiceManager) UpdateService(id string, name, urlAddress *string) (*d
 }
 
 func (sm *ServiceManager) DeleteService(id string) error {
-	if !sm.repo.Exists(id) {
+	exist, err := sm.repo.Exists(id)
+
+	if !exist {
 		return fmt.Errorf("serviço com ID %s não encontrado", id)
+	}
+
+	if err != nil {
+		return fmt.Errorf("erro ao encontrar serviço: %v", err)
 	}
 
 	if err := sm.repo.Delete(id); err != nil {

@@ -34,7 +34,7 @@ func main() {
 
 	checkInterval := 30 * time.Second
 
-	repo := repository.NewInMemoryServiceRepository(dbClient)
+	repo := repository.NewServiceRepository(dbClient)
 	serviceManager := service.NewServiceManager(repo, checkInterval)
 	serviceHandler := handler.NewServiceHandler(serviceManager)
 
