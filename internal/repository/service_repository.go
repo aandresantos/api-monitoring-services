@@ -8,6 +8,10 @@ import (
 type ServiceRepository interface {
 	GetAll() []domain.Service
 	Create(svc *domain.Service) error
+	GetByID(id string) (*domain.Service, bool)
+	Update(service *domain.Service) error
+	Delete(id string) error
+	Exists(id string) bool
 }
 
 type InMemoryServiceRepository struct {
@@ -36,6 +40,21 @@ func (r *InMemoryServiceRepository) GetAll() []domain.Service {
 	return services
 }
 
+func (r *InMemoryServiceRepository) GetByID(id string) (*domain.Service, bool) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	service, found := r.store[id]
+
+	if !found {
+		return nil, false
+	}
+
+	serviceCopy := *service
+
+	return &serviceCopy, true
+}
+
 func (r *InMemoryServiceRepository) Create(svc *domain.Service) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -43,4 +62,36 @@ func (r *InMemoryServiceRepository) Create(svc *domain.Service) error {
 	r.store[svc.ID] = svc
 
 	return nil
+}
+
+func (r *InMemoryServiceRepository) Update(service *domain.Service) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if _, found := r.store[service.ID]; !found {
+		return nil
+	}
+
+	r.store[service.ID] = service
+	return nil
+}
+
+func (r *InMemoryServiceRepository) Delete(id string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if _, found := r.store[id]; !found {
+		return nil
+	}
+
+	delete(r.store, id)
+	return nil
+}
+
+func (r *InMemoryServiceRepository) Exists(id string) bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	_, found := r.store[id]
+	return found
 }
