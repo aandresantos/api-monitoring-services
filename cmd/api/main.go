@@ -7,29 +7,45 @@ import (
 	"syscall"
 	"time"
 
+	"api-monitoring-services/internal/database"
 	"api-monitoring-services/internal/handler"
 	"api-monitoring-services/internal/repository"
 	"api-monitoring-services/internal/service"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
+	errLoadEnv := godotenv.Load()
+
+	if errLoadEnv != nil {
+		log.Println("⚠️ .env não encontrado")
+	}
+
+	dbClient, errConnectDB := database.ConnectDB()
+
+	if errConnectDB != nil {
+
+		log.Fatalf("Erro ao conectar no banco: %v", errConnectDB)
+	}
+	defer database.CloseConnectionDB()
+
 	checkInterval := 30 * time.Second
 
-	repo := repository.NewInMemoryServiceRepository()
+	repo := repository.NewInMemoryServiceRepository(dbClient)
 	serviceManager := service.NewServiceManager(repo, checkInterval)
 	serviceHandler := handler.NewServiceHandler(serviceManager)
 
-	Echo := echo.New()
-	Echo.Use(middleware.Logger())
-	Echo.Use(middleware.Recover())
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	serviceHandler.RegisterRoutes(Echo)
+	serviceHandler.RegisterRoutes(e)
 
 	go func() {
-		StartServer(":3000", Echo)
+		StartServer(":3000", e)
 	}()
 
 	// TODO: implementar o resto do graceful

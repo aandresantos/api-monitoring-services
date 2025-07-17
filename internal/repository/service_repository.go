@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"api-monitoring-services/internal/database"
 	"api-monitoring-services/internal/domain"
 	"sync"
 )
@@ -17,11 +18,13 @@ type ServiceRepository interface {
 type InMemoryServiceRepository struct {
 	store map[string]*domain.Service
 	mutex *sync.RWMutex
+	db    *database.DBClient
 }
 
-func NewInMemoryServiceRepository() *InMemoryServiceRepository {
+func NewInMemoryServiceRepository(dbClient *database.DBClient) *InMemoryServiceRepository {
 
 	return &InMemoryServiceRepository{
+		db:    dbClient,
 		store: make(map[string]*domain.Service),
 		mutex: &sync.RWMutex{},
 	}
