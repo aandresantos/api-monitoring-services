@@ -1,0 +1,18 @@
+
+services:
+  monitoring_psql_db:
+    image: postgres:15
+    env_file:
+      - ../.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - monitoring-psql-network
+
+volumes:
+  pgdata:
+networks:
+    monitoring-psql-network:
+        driver: bridge
