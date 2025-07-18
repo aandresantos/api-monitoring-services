@@ -2,73 +2,64 @@ package healthcheck
 
 import (
 	"api-monitoring-services/internal/domain"
-	"context"
+	"fmt"
 	"net/http"
 	"time"
 )
 
-type HealthChecker interface {
-	Check(svc *domain.Service) domain.ServiceStatus
-	// CheckWithMetrics(svc *domain.Service) CheckResult
+type CheckResult struct {
+	Status         domain.ServiceStatus
+	ResponseTime   time.Duration
+	HTTPStatusCode int
+	Error          error
 }
 
 type HTTPHealthChecker struct {
-	client  *http.Client
-	timeout time.Duration
+	client http.Client
 }
 
-type CheckResult struct {
-	ServiceID string
-	Status    domain.ServiceStatus
-	CheckedAt time.Time
-	Duration  time.Duration
+type IHealthChecker interface {
+	Check(url string) CheckResult
+	// CheckWithMetrics(svc *domain.Service) CheckResult
 }
 
-func NewHTTPHealthChecker(timeout time.Duration) *HTTPHealthChecker {
+type IChecker interface {
+	Check(url string) CheckResult
+}
+
+func NewHTTPHealthChecker(timeout time.Duration) IChecker {
 	return &HTTPHealthChecker{
-		timeout: timeout,
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client: http.Client{Timeout: timeout},
 	}
 }
 
-func (h *HTTPHealthChecker) Check(svc *domain.Service) domain.ServiceStatus {
-	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.URLAddress, nil)
-
-	if err != nil {
-		return domain.StatusOffline
-	}
-
-	resp, err := h.client.Do(req)
+func (h *HTTPHealthChecker) Check(url string) CheckResult {
+	startTime := time.Now()
+	resp, err := h.client.Get(url)
+	responseTime := time.Since(startTime)
 
 	if err != nil {
-		return domain.StatusOffline
-
+		return CheckResult{
+			Status:       domain.StatusOffline,
+			ResponseTime: responseTime,
+			Error:        err,
+		}
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return domain.StatusOffline
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return CheckResult{
+			Status:         domain.StatusOnline,
+			ResponseTime:   responseTime,
+			HTTPStatusCode: resp.StatusCode,
+		}
 	}
 
-	return domain.StatusOnline
-}
-
-func (h *HTTPHealthChecker) CheckWithMetrics(svc *domain.Service) *CheckResult {
-
-	start := time.Now()
-	status := h.Check(svc)
-	duration := time.Since(start)
-
-	return &CheckResult{
-		ServiceID: svc.ID,
-		Status:    status,
-		CheckedAt: start,
-		Duration:  duration,
+	return CheckResult{
+		Status:         domain.StatusOffline,
+		ResponseTime:   responseTime,
+		HTTPStatusCode: resp.StatusCode,
+		Error:          fmt.Errorf("status code: %d", resp.StatusCode),
 	}
 }

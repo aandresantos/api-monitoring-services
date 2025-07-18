@@ -42,7 +42,7 @@ func ConnectDB() (*DBClient, error) {
 	}
 
 	DB = pool
-	fmt.Println(("DB conectado"))
+	fmt.Println(("[Banco de dados] -> Status: conectado"))
 
 	return &DBClient{Conn: DB}, nil
 }
@@ -51,6 +51,6 @@ func CloseConnectionDB() {
 	if DB != nil {
 		DB.Close()
 
-		fmt.Println(("DB desconectado"))
+		fmt.Println(("Banco de dados] -> Status: desconectado"))
 	}
 }

@@ -5,9 +5,12 @@ import (
 	"api-monitoring-services/internal/pkg/healthcheck"
 	"api-monitoring-services/internal/repository"
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ServiceManager struct {
@@ -15,11 +18,11 @@ type ServiceManager struct {
 	checkInterval time.Duration
 	ctx           context.Context
 	cancelFunc    context.CancelFunc
-	healthChecker healthcheck.HealthChecker
+	healthChecker healthcheck.IHealthChecker
 	wg            sync.WaitGroup
 }
 
-func NewServiceManager(repo repository.IServiceRepository, checker healthcheck.HealthChecker, checkInterval time.Duration) *ServiceManager {
+func NewServiceManager(repo repository.IServiceRepository, checker healthcheck.IHealthChecker, checkInterval time.Duration) *ServiceManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ServiceManager{
@@ -147,12 +150,29 @@ func (sm *ServiceManager) performHealthChecks() {
 }
 
 func (sm *ServiceManager) checkSingleService(service *domain.Service) {
-	newStatus := sm.healthChecker.Check(service)
+	checkResult := sm.healthChecker.Check(service.URLAddress)
 
-	if service.Status != newStatus {
-		service.UpdateStatus(newStatus)
-		sm.repo.Update(service)
-		fmt.Printf("[Health Check] -> Serviço %s (%s) mudou para %s\n",
-			service.Name, service.ID, newStatus)
+	newCheck := &domain.HealthCheck{
+		ID:             uuid.New().String(),
+		ServiceID:      service.ID,
+		Status:         checkResult.Status,
+		ResponseTimeMs: int(checkResult.ResponseTime),
 	}
+
+	if checkResult.HTTPStatusCode != 0 {
+		newCheck.HTTPStatusCode = sql.NullInt32{Int32: int32(checkResult.HTTPStatusCode), Valid: true}
+	}
+
+	if checkResult.Error != nil {
+		newCheck.ErrorMessage = sql.NullString{String: string(checkResult.Error.Error()), Valid: true}
+	}
+
+	err := sm.repo.SaveCheckResult(context.Background(), newCheck)
+
+	if err != nil {
+		fmt.Printf("[Health Check] Erro ao salvar resultado para o serviço %s: %v", service.Name, err)
+	} else {
+		fmt.Printf("[Health Check] Serviço '%s' verificado. Status: %s.", service.Name, newCheck.Status, newCheck.ResponseTimeMs)
+	}
+
 }

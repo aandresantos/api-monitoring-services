@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type IServiceRepository interface {
@@ -15,6 +17,7 @@ type IServiceRepository interface {
 	Update(service *domain.Service) error
 	Delete(id string) error
 	Exists(id string) (bool, error)
+	SaveCheckResult(ctx context.Context, check *domain.HealthCheck) error
 }
 
 type ServiceRepository struct {
@@ -140,4 +143,31 @@ func (r *ServiceRepository) Exists(id string) (bool, error) {
 		return false, fmt.Errorf("erro ao verificar existência do serviço com id %s: %w", id, err)
 	}
 	return exists, nil
+}
+
+func (r *ServiceRepository) SaveCheckResult(ctx context.Context, check *domain.HealthCheck) error {
+	tx, err := r.db.Conn.BeginTx(ctx, pgx.TxOptions{})
+
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+
+	checkQuery := `
+		INSERT INTO health_checks (id, service_id, status, response_time_ms, http_status_code, error_message)
+		VALUES ($1, $2, $3, $4, $5, $6)`
+
+	_, err = tx.Exec(ctx, checkQuery, check.ID, check.ServiceID, check.Status, check.ResponseTimeMs, check.HTTPStatusCode, check.ErrorMessage)
+	if err != nil {
+		return err
+	}
+
+	updateQuery := `UPDATE services SET status = $1, updated_at = NOW() WHERE id = $2`
+	_, err = tx.Exec(ctx, updateQuery, check.Status, check.ServiceID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
