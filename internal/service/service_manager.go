@@ -172,7 +172,7 @@ func (sm *ServiceManager) checkSingleService(service *domain.Service) {
 	if err != nil {
 		fmt.Printf("[Health Check] Erro ao salvar resultado para o serviço %s: %v", service.Name, err)
 	} else {
-		fmt.Printf("[Health Check] Serviço '%s' verificado. Status: %s.", service.Name, newCheck.Status, newCheck.ResponseTimeMs)
+		fmt.Printf("[Health Check] Serviço '%s' verificado. Status: %s", service.Name, newCheck.Status)
 	}
 
 }

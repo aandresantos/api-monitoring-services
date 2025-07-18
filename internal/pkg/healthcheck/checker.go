@@ -20,7 +20,6 @@ type HTTPHealthChecker struct {
 
 type IHealthChecker interface {
 	Check(url string) CheckResult
-	// CheckWithMetrics(svc *domain.Service) CheckResult
 }
 
 type IChecker interface {
