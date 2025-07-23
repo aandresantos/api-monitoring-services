@@ -105,9 +105,9 @@ func (h *ServiceHandler) DeleteService(c echo.Context) error {
 }
 
 func (h *ServiceHandler) RegisterRoutes(e *echo.Echo) {
-	e.GET("/services", h.ListServices)
-	e.POST("/services", h.CreateService)
-	e.GET("/services/:id", h.GetServiceByID)
-	e.PATCH("/services/:id", h.UpdateService)
-	e.DELETE("/services/:id", h.DeleteService)
+	e.GET("/api/services", h.ListServices)
+	e.POST("/api/services", h.CreateService)
+	e.GET("/api/services/:id", h.GetServiceByID)
+	e.PATCH("/api/services/:id", h.UpdateService)
+	e.DELETE("/api/services/:id", h.DeleteService)
 }
