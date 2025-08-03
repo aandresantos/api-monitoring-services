@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -34,6 +35,8 @@ func NewServiceHandler(sm *service.ServiceManager) *ServiceHandler {
 
 func (h *ServiceHandler) ListServices(ctx echo.Context) error {
 	services := h.serviceManager.GetAllServices()
+
+	fmt.Println(services)
 
 	return ctx.JSON(http.StatusOK, services)
 }

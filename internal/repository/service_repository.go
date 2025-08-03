@@ -34,8 +34,19 @@ func NewServiceRepository(dbClient *database.DBClient) *ServiceRepository {
 func (r *ServiceRepository) GetAll() []domain.Service {
 	rows, err := r.db.Conn.Query(
 		context.Background(),
-		`SELECT id, name, url_address, status, created_at, updated_at
-		FROM services`,
+		`
+        SELECT s.id, s.name, s.url_address, s.status, 
+               s.created_at, s.updated_at,
+               hc.response_time_ms, hc.checked_at as last_check
+        FROM services s
+        LEFT JOIN LATERAL (
+            SELECT response_time_ms, checked_at
+            FROM health_checks
+            WHERE service_id = s.id
+            ORDER BY checked_at DESC
+            LIMIT 1
+        ) hc ON true
+        `,
 	)
 
 	if err != nil {
@@ -48,6 +59,10 @@ func (r *ServiceRepository) GetAll() []domain.Service {
 
 	for rows.Next() {
 		var svc domain.Service
+
+		var responseTimeMs *int
+		var lastCheck *time.Time
+
 		err := rows.Scan(
 			&svc.ID,
 			&svc.Name,
@@ -55,11 +70,22 @@ func (r *ServiceRepository) GetAll() []domain.Service {
 			&svc.Status,
 			&svc.CreatedAt,
 			&svc.UpdatedAt,
+			&responseTimeMs,
+			&lastCheck,
 		)
 		if err != nil {
 			fmt.Printf("Erro ao ler linha: %v\n", err)
 			continue
 		}
+
+		if responseTimeMs != nil {
+			svc.ResponseTimeMs = *responseTimeMs
+		}
+
+		if lastCheck != nil {
+			svc.LastCheck = *lastCheck
+		}
+
 		services = append(services, svc)
 	}
 

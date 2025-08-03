@@ -19,8 +19,12 @@ type Service struct {
 	Name       string        `json:"name"`
 	URLAddress string        `json:"urlAddress"`
 	Status     ServiceStatus `json:"status"`
-	CreatedAt  time.Time     `json:"createdAt"`
-	UpdatedAt  time.Time     `json:"updatedAt"`
+
+	ResponseTimeMs int       `json:"responseTimeMs"`
+	LastCheck      time.Time `json:"lastCheck"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type NewServiceBody struct {

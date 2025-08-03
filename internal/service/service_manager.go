@@ -156,7 +156,7 @@ func (sm *ServiceManager) checkSingleService(service *domain.Service) {
 		ID:             uuid.New().String(),
 		ServiceID:      service.ID,
 		Status:         checkResult.Status,
-		ResponseTimeMs: int(checkResult.ResponseTime),
+		ResponseTimeMs: int(checkResult.ResponseTime.Milliseconds()),
 	}
 
 	if checkResult.HTTPStatusCode != 0 {
